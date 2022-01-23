@@ -1,0 +1,45 @@
+Resources: 
+	BIDS Specification: https://bids.neuroimaging.io/specification.html 
+	Walkthrough: https://reproducibility.stanford.edu/bids-tutorial-series-part-2a/#heuman2 
+	BIDS Validator: https://bids-standard.github.io/bids-validator/ 
+	2E project subject ids: [redacted]
+
+Avery notes from following "Walkthrough" document linked above: 
+[1] In terminal on Rachel’s computer, change directory to project folder 
+    >> cd /Documents/2EProject
+[2] Create folder for DICOMS (all in one folder) according to BIDS format 
+    >> mkdir sourcedata 
+[3] Copy DICOMS into sourcedata folder
+    >> cp -avr 01-SubjectScans/* sourcedata/. 
+    >> not enough space to do this, leaving as is for now
+    >> cp -avr 02-ControlFiles/* sourcedata/.
+    >> not enough space to do this, leaving as is for now, removed sourcedata directory 
+    >> rm -fr sourcedata
+[4] Create folder for conversion according to BIDS format 
+    >> mkdir rawdata 
+[5] Create folder for bids conversion notes/ files/ misc. 
+    >> mkdir bids_conversion 
+[6] Create folder for eventual analysis pipelines accord to BIDS format 
+    >> mkdir derivatives 
+[7] Install docker (following BIDS Walkthrough tutorial) 
+    >> sudo snap install docker 
+[8] Pull heudiconv using docker 
+    >> sudo docker pull nipy/heudiconv:latest
+[9] Dry run of heudiconv 
+    >> sudo docker run --rm -it -v /home/sharky/Documents/2EProject:/base nipy/heudiconv:latest -d /base/01-SubjectScans/2E_{subject}/dicom_files/SCANS/*/DICOM/*.dcm -o /base/rawdata/ -f convertall -s 006 -c none --overwrite 
+    * Various directory paths (dicoms saved at various levels)
+        * for controls and some 2E subjects: /base/0*/*{subject}/dicom_files/*/scans/*/resources/DICOM/files/*.dcm 
+        * for 2E subjects: /base/0*/*{subject}/dicom_files/*/SCANS/*/DICOM/*.dcm 
+        * for 2E_006 only: /base/0*/*{subject}/dicom_files/SCANS/*/DICOM/*.dcm 
+[10] Create heuristic file
+    * see file in /home/sharky/Documents/2EProject/bids_conversion/heuristic.py
+[11] Create bash script to run heuristic file 
+    * See file in /home/sharky/Documents/2EProject/bids_conversion/01_run_heuristic.sh
+[12] Run subject through conversion using bash script 
+    >> bash 01_run_heuristic.sh 
+    >> got this issue https://neurostars.org/t/heudiconv-single-session-problems-with-heuristic-py/4910/3 and deleted files according to solution person found 
+    >> cd /home/sharky/Documents/2EProject/rawdata 
+    >> sudo rm -fr .heudiconv 
+    >> reran heuristic with no issues
+[13] Check output folder (rawdata) in the BIDS validator: https://bids-standard.github.io/bids-validator/ 
+[14] Run remaining subjects through conversion using bash script 
