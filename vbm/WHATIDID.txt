@@ -1,0 +1,65 @@
+walkthrough for VBM setup and analysis 
+
+Resources. 
+	Tracking Spreadsheet: [redacted] 
+	VBM Tutorial: ~/Documents/2EProject/derivatives/vbm/vbm_tutorial.pdf 
+
+Step 1. T1w QA: after data has been converted (see ~/Documents/2EProject/bids_conversion/WHATIDID.txt for instructions on data conversion) use fsleyes to view a subject's T1w scan. Review scan for any notable artifacts and abnormalities, noting any of concern using the tracking spreadsheet linked above using the comments feature in google drive. If subject has significant issues, they will be excluded from analyses which can be noted by greying out the rest of the row for a subject in the tracking sheet.  
+	>> fsleyes ~/Documents/2EProject/rawdata/sub-XXX/anat/sub-XXX_acq-bcorr_run-001_T1w.nii.gz  
+
+Step 2. FOLDER SETUP: Create vbm folder within ~/Documents/2EProject/derivatives folder. Within vbm folder create t1w_scans folder. 
+
+Step 3. FILE SETUP: In ~/Documents/2EProject/derivatives/01_code folder, use 01_cp_files.sh script to copy the nifti files into the t1w_scans folder, edit script as necessary to copy appropriate subject and file type (uncorr vs bias corrected T1w). Use 02_gunzip.sh to unzip all copied files in ~/Documents/2EProject/derivatives/vbm/t1w_scans folder. 
+
+Step 4. TRACKING SPREADSHEET: Using the above linked tracking spreadsheet, initial and date that files were successfully copied and converted.  
+
+Step 5: VBM TUTORIAL: Following the above specified VBM Tutorial, walkthrough outlined steps. Use this walkthrough for notes on implementation specific to 2EProject. You can open VBM Tutorial in the command line using the following command: 
+	>> gio open vbm_tutorial.pdf
+
+~~~~NOTES ON VBM TUTORIAL~~~~
+
+1. Getting Started 
+	Start up SPM
+		>> cd ~/Documents/2EProject/derivatives/vbm
+		>> matlab &
+		Within matlab, select "Set Path" > "Add folder" > navigate to /usr/local/bin/spm12 > select "Open" > select "Close" > select "No" 
+		In matlab command line
+			>> spm pet
+
+	1.1 Check Reg button and 1.2 Display Button
+		Rachel has done this for subjects up until 10-04-2021 using fsleyes. See Step 1 above for how to do this step for our 2EProject specific pipeline. 
+
+2. Image processing for VBM 
+	2.1 Using Spatial -> Segment 
+		Click "BATCH" in green SPM gui 
+		Following tutorial instructions, add the Segment module, Run Dartel (create template) module, and Normalise to MNI Space module.  
+		In Volumes, I selected all T1w.nii scans located in ~/Documents/2eProject/derivatives/vbm/t1w_scans. You can do this by selecting "Volumes" > select "Specify" > navigate to t1w_scans folder using left side of window, right click on the right side of the window to select all of the scans > you will see all scans populate in the lower portion of the window > select "Done"
+		Select "Bias Regularisation" > select "heavy regularisation (0.1)". Use defaults specified for tutorial for the rest of this module. 
+	2.2 Run Dartel (create templates) 
+		Select the "Run Dartel (create templates)" module from the module list on the left of your batch editor window. In the Images section, select "Images" and create two Images within this section. Select the first "Images" with an "X" at the right side of the corresponding row > select "Dependency" > select rc1 images. Follow the same steps for the following "Images" row, but select rc2 images. 
+	2.3 Normalise to MNI Space 
+		Select the "Normalise to MNI Space" module from the module list on the left of your batch editor window. Select the "Dartel Template" field > select "Dependency" > select "Run Dartel (create templates): Template (Iteration 6)" 
+		Select "Flow Fields" > select "Dependency" > select "Run Dartel (create templates): Flow Fields" 
+		Select "Voxel Sizes" > select "Specify" > type "0.5 0.5 0.5" > select "Done" 
+		Select "Gaussian FWHM" > select "Specify" > type "4 4 4" > select "Done" 
+		For all other parts of this module, use defaults specified in tutorial. 
+	To save preprocessing script, select "File" > select "Save Batch and Script" > name accordingly and save to /home/sharky/Documents/2EProject/derivatives/vbm/preproc_scripts/.
+
+Quality Assessment of Image Processing 
+	1.Segmentation QA 
+		Select "Check Reg" > Select for one subject the original T1w scan, the c1, c2, and c3 scans > select "done"
+		See how well VBM segmented the grey matter (c1), white matter (c2), and cerebralspinal fluid (c3) in comparison to the original T1w scan.
+		Scroll through and check that segmentation of grey matter, white matter, and CSF algin with the subject's T1w scan by moving the crosshair to edges of relevant tissue. Save jpgs of cases with very severe issues in ~/Documents/2EProject/derivatives/vbm/03_preproc_qa/01_segmentation_qa. Note any issues in the tracking spreadsheet linked above (see columns c1 qa, c2 qa, and c3 qa). Initial and date for each subject once checked, use comments function to detail any notable issues. If issue warrants exclusion, grey out the rest of the cells in the row for that subject. 
+	2. Normalisation QA 
+		Select "Check Reg" > Select for one subject their smwc* files and the mni template image located in /usr/local/bin/spm12/canonical/single_subj_T1.nii > select "done" 
+		Scroll through and check that normalization to standard space and registration between the T1w scan and MNI template have worked by moving the crosshair to the edges of the brain and ventricles to check that they line up. Save jpgs of cases with very severe issues in ~/Documents/2EProject/derivatives/vbm/03_preproc_qa/02_coregistration_qa and note on tracking spreadsheet linked above in the "coregistration qa" column (intial and date, use comments to add notable issues). If warrants exclusion, grey out the rest of the cells in the row for that subject.  
+	
+3. Statistical Analysis 
+	3.1 Basic Models
+		Create directories. I created within ~/Documents/2EProject/derivatives/vbm and "04_basic-model_analysis_scripts" and "05_basic-model_analysis" folder and within "04_basic-model_analysis_scripts", created "00_tissue_volume" "01_gmv" and 02_wmv" folders to hold the basic model scripts for calculating total intracranial volume (00_tissue_volume), grey matter volume (01_gmv) and white matter volume (02_wmv). Within "05_basic-model_analysis" I created "01_gmv" and "02_wmv" folders to hold the output from the corresponding scripts and to save results, I also created a folder "00_group_folders" and within this folder a "01_controls" and "02_2e" to hold the processed subject files split into groups for easy selection of files for the SPM basic model. 
+		Copy relevant files into group folders for easy selection + to maintain selection order. In ~/Documents/2EProject/derivatives/vbm/01_code use 03_mk_group_folders.sh to copy processed files into respective group folders. Create any folders that are not preexisting. Make any necessary edits to this script following the comments.  
+	3.2 Review, 3.3 Estimate, 3.4 Results
+		See ~/Documents/2EProject/derivatives/vbm/04_basic-model_analysis_scripts for records of all analyses. "00_tissue_volumes" contains the script for calculating the global tissue volumes. tot_intracranial_volume.csv contains GMW, WMV, and CSF volume. In the tracking spreadsheet on "01_basic-model_analysis" tab, copy these values into the spreadsheet and add all three values together for each subject to calculate the total intracranial volume. This will be used in the basic model. SPM outputs values for subjects in the order they were selected in the script, so be sure to organize the tracking spreadsheet "basic-model_analysis" tab in the same subject order. "01_analysis" correlates to the first basic model created, this model includes subjects in the study scanned on or before 10/04/2021 with no subjects excluded based on the QA. Subsequent analyses can be labeled "02_analysis" "03_analysis" etc. 
+		Once scripts have been run, see the output in ~/Documents/2EProject/derivatives/vbm/05_basic-model_analysis in the 01_analysis folder there is a 01_gmv and 02_wmv folder holding the output files from their respective scripts. In the SPM menu, select "Results" and select the SPM.mat file within the output folder. Select "Done". Select the contrast you would first like to look at (ex. GMV: control > 2E). For apply masking, select "none" (this allows for a whole brain analysis. if you were doing an ROI analysis, you would select a mask. For p value adjustment to control, select "none". This will filter your results using the uncorrected p value rather than the FWE corrected p value. for threshold {T or p value} type "0.001". This will threshold your uncorrected pvalues displayed at or below 0.001. Any results with p uncorrected > 0.001 will not be displayed. Hit enter. for & extent threshold {voxels}, enter 0. This will threshold your results by the number of voxels in a cluster. If a cluster has less than the number you specify, it will not be displayed. In selected 0, we will see all clusters p uncorrected < 0.001 or any cluster size. Hit enter. In the SPM graphics window, results will be displayed. Select "File" > "Save As" > and save the file into a "results/hc-2e" folder and name the file "hc-2e_gmv_whole_brain.jpg" to save a record of the statistics. In the tracking spreadsheet, use 01_basic-model_results" tab to record all stats for cluster-level p(FWE) < 0.500. For any clusters p(FWE) < 0.200, save the cluster and an overlay image. 
+	To save a cluster, highlight the coordinates of the peak voxel assigned to the cluster (after clicking on the coordinates they will highlight in red). Then in the Results GUI, under the "Display" panel, click on "save..." and select "current cluster". Above a line "Output filename" will appear where you can name what you would like the cluster to be saved as. I have adopted a naming scheme as such: [number corresponding to analysis, ex: 01_analysis would get "01"]_[whole brain analysis = wb, roi analysis = roi]_[L or R hemisphere]_[label for peak voxel, for wb I use the BA label if possible]_[coordinates, round up for 7T since it's resolution is to 0.5 voxel]. An example of a label in this naming scheme is 01_wb_L_BA19_-8_-82_28 and once you have entered the same for the file you can hit enter and the output will save at the level of the SPM.mat file. I then move the output file into it's corresponding results folder and a folder within titled "clusters". Example path: ~/Documents/2EProject/derivatives/vbm/05_basic-model_analysis/01_preproc_analysis/01_analysis/02_wmv/results/hc-2e/clusters 
+	To save an image, again highlight the coordinates, and in the Results GUI under the "Display" panel, click "overlays..." and select "sections" and at the level of /home/sharky/Documents/2EProject there is a hirestemplate.nii file that you can naviage to using the left side of the Select image GUI, and actually select the file using the right side of the GUI. The selected file will populate in the lower portion. Click "Done". In the Graphics GUI you can now see the overlayed image with crosshairs on your peak voxel. You can save it like this (File > save as > use naming scheme). If you right click you can unselect the crosshairs so that you don't have them obstructing the image. I save these images into a "jpegs" folder in the corresponding results folder. Example path: ~/Documents/2EProject/derivatives/vbm/05_basic-model_analysis/01_preproc_analysis/01_analysis/02_wmv/results/hc-2e/jpegs
